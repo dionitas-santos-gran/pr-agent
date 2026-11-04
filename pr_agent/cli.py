@@ -177,6 +177,15 @@ def set_parser():
     return parser
 
 
+def _build_agent() -> PRAgent:
+    # Selected from the environment only, so a reviewed repository's settings cannot opt in.
+    if os.environ.get("PR_AGENT_AI_HANDLER", "").strip().lower() == "claude_code":
+        from pr_agent.algo.ai_handlers.claude_code_ai_handler import ClaudeCodeAIHandler
+
+        return PRAgent(ai_handler=ClaudeCodeAIHandler)
+    return PRAgent()
+
+
 def run_command(pr_url, command):
     # Preparing the command
     command_args = parse_command(command.lstrip('/'))
@@ -251,10 +260,10 @@ def run(inargs=None, args=None):
             init_run_details()
             # Read the verdict in the same task where the request installs its collector.
             if args.issue_url:
-                result = await PRAgent().handle_request(args.issue_url, [command] + args.rest)
+                result = await _build_agent().handle_request(args.issue_url, [command] + args.rest)
             else:
                 target = args.pr_url or "local_diff"
-                result = await PRAgent().handle_request(target, [command] + args.rest)
+                result = await _build_agent().handle_request(target, [command] + args.rest)
             if result is RequestOutcome.SKIPPED:
                 # No tool ran, so there are no command callbacks or failures to drain.
                 return True, False
